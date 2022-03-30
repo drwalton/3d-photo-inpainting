@@ -4,6 +4,7 @@ import glob
 import numpy as np
 import imageio
 from MiDaS.MiDaS_utils import write_depth
+import OpenEXR
 
 BOOST_BASE = 'BoostingMonocularDepth'
 
@@ -42,6 +43,9 @@ def run_boostmonodepth(img_names, src_folder, depth_folder):
         depth = np.array(depth).astype(np.float32)
         depth = resize_depth(depth, target_width, target_height)
         np.save(os.path.join(depth_folder, tgt_name.replace('.png', '.npy')), depth / 32768. - 1.)
+        exr_filename = os.path.join(depth_folder, tgt_name.replace('.png', '.exr'))
+        exr_out = OpenEXR.OutputFile(exr_filename, OpenEXR.Header(depth.shape[-2], depth.shape[-1]))
+        exr_out.writePixels({'R' : depth, 'G' : depth, 'B' : depth})
         write_depth(os.path.join(depth_folder, tgt_name.replace('.png', '')), depth)
 
 def clean_folder(folder, img_exts=['.png', '.jpg', '.npy']):

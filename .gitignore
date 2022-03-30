@@ -1,3 +1,5 @@
+depth/*
+video/*
 #ignore all kind of files
 *.*
 #except php files
