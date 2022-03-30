@@ -25,6 +25,9 @@ from mpl_toolkits.mplot3d import Axes3D
 import time
 from scipy.interpolate import interp1d
 from collections import namedtuple
+import OpenEXR
+import Imath
+import array
 
 def path_planning(num_frames, x, y, z, path_type=''):
     if path_type == 'straight-line':
@@ -942,6 +945,13 @@ def smooth_cntsyn_gap(init_depth_map, mask_region, context_region, init_mask_reg
 def read_MiDaS_depth(disp_fi, disp_rescale=10., h=None, w=None):
     if 'npy' in os.path.splitext(disp_fi)[-1]:
         disp = np.load(disp_fi)
+    elif 'exr' in os.path.splitext(disp_fi)[-1]:
+        file = OpenEXR.InputFile(disp_fi)
+        FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
+        red = array.array('f', file.channel('R', FLOAT)).tolist()
+        dw = file.header()['dataWindow']
+        sz = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
+        disp = np.array(red).reshape(sz[1], sz[0])
     else:
         disp = imageio.imread(disp_fi).astype(np.float32)
     disp = disp - disp.min()

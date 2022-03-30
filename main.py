@@ -22,6 +22,7 @@ from boostmonodepth_utils import run_boostmonodepth
 from MiDaS.monodepth_net import MonoDepthNet
 import MiDaS.MiDaS_utils as MiDaS_utils
 from bilateral_filtering import sparse_bilateral_filtering
+import OpenEXR
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, default='argument.yml',help='Configure of post processing')
@@ -49,15 +50,23 @@ for idx in tqdm(range(len(sample_list))):
     mesh_fi = os.path.join(config['mesh_folder'], sample['src_pair_name'] +'.ply')
     image = imageio.imread(sample['ref_img_fi'])
 
-    print(f"Running depth extraction at {time.time()}")
-    if config['use_boostmonodepth'] is True:
-        run_boostmonodepth(sample['ref_img_fi'], config['src_folder'], config['depth_folder'])
-    elif config['require_midas'] is True:
-        run_depth([sample['ref_img_fi']], config['src_folder'], config['depth_folder'],
-                  config['MiDaS_model_ckpt'], MonoDepthNet, MiDaS_utils, target_w=640)
+    if config["load_existing_depth"] is True:
+        print("Not running depth extraction. Instead loading from file", sample['depth_fi'])
+    else:
+        print(f"Running depth extraction at {time.time()}")
+        if config['use_boostmonodepth'] is True:
+            run_boostmonodepth(sample['ref_img_fi'], config['src_folder'], config['depth_folder'])
+        elif config['require_midas'] is True:
+            run_depth([sample['ref_img_fi']], config['src_folder'], config['depth_folder'],
+                    config['MiDaS_model_ckpt'], MonoDepthNet, MiDaS_utils, target_w=640)
 
     if 'npy' in config['depth_format']:
         config['output_h'], config['output_w'] = np.load(sample['depth_fi']).shape[:2]
+    elif 'exr' in config['depth_format']:
+        file = OpenEXR.InputFile(sample['depth_fi'])
+        dw = file.header()['dataWindow']
+        sz = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
+        config['output_h'], config['output_w'] = sz[1], sz[0]
     else:
         config['output_h'], config['output_w'] = imageio.imread(sample['depth_fi']).shape[:2]
     frac = config['longer_side_len'] / max(config['output_h'], config['output_w'])
